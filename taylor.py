@@ -1,49 +1,113 @@
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import math
 
-# Cargar los datos
-datos = pd.read_csv('temperaturas_semanales.csv')
+class InterpolacionTaylor:
+    def __init__(self, datos={}, punto_de_interpolacion=0, orden=0):
+        self.datos = datos
+        self.punto = punto_de_interpolacion
+        self.orden = orden
+        
+        self.valores = list(self.datos.values())
+        self.fechas = list(self.datos.keys())
+    
+    def factorial(self, n):
+        if n == 0:
+            return 1
+        else:
+            return n * self.factorial(n-1)
+        
+    def calcular_derivadas(self, orden):
+        a = self.punto
+        f = self.valores
+        
+        if orden == 1:
+            return (f[a] - f[a-1])
+        elif orden == 2:
+            return (f[a] - 2*f[a-1] + f[a-2])
+        elif orden == 3:
+            return (f[a] - 3*f[a-1] + 3*f[a-2] - f[a-3])
+        else:
+            print('Orden no válido, solo orden 1, 2, 3') 
+            return None
+            
+    def polinomio_taylor(self, x):
+        a = self.punto
+        f = self.valores
+        
+        if a < len(f) and x < len(f):
+            polinomio = f[a]
+            for n in range(1, self.orden + 1):
+                derivada = self.calcular_derivadas(n)
+                polinomio += (derivada / self.factorial(n)) * ((x - a) ** n)
+            return polinomio
+        else:
+            print("x excedido")
+            return None
+            
+    def resultados(self):
+        x_valores = []
+        y_valores = []
+        y_original = []
+    
+        for i in range(self.punto - 3, self.punto + 4):
+            if i in self.fechas:
+                x_valores.append(i)
+                y_original.append(self.valores[i])
+                y_valor = self.polinomio_taylor(i)
+                y_valores.append(y_valor)
 
-# Asegurarse de que la columna de fechas sea del tipo datetime
-datos['Fecha'] = pd.to_datetime(datos['Fecha'])
+        x_suave = [x + (i/10) for x in x_valores for i in range(1, 11)]
+        y_suave = [self.polinomio_taylor(x) for x in x_suave]
 
-# Extraer temperaturas y días
-x = np.arange(len(datos))
-y = datos['Temperatura'].values
+        return x_valores, y_valores, y_original, x_suave, y_suave
 
-# Elegir el punto de interpolación (por ejemplo, el tercer día)
-a = 2  # Tercer día (índice 2)
+    def graficar(self):
+        x_valores, y_valores, y_original, x_suave, y_suave = self.resultados()
 
-# Calcular derivadas
-f_a = y[a]
-f_prime_a = (y[a + 1] - y[a - 1]) / 2  # Aproximación de la primera derivada
-f_double_prime_a = y[a + 1] - 2 * y[a] + y[a - 1]  # Aproximación de la segunda derivada
-
-# Interpolación de Taylor de grado 2
-def taylor_interpolation(x, a, f_a, f_prime_a, f_double_prime_a):
-    return f_a + f_prime_a * (x - a) + (f_double_prime_a / math.factorial(a)) * (x - a) ** a
-
-# Generar puntos para graficar
-x_vals = np.linspace(0, len(datos) - 1, 100)
-y_taylor = taylor_interpolation(x_vals, a, f_a, f_prime_a, f_double_prime_a)
-print(y_taylor)
-print(f'x: {x_vals}')
-
-# Generar fechas correspondientes a x_vals
-fechas_taylor_interp = pd.date_range(start='2023-03-01', periods=len(datos), freq='D')
-fechas_taylor_interp = pd.date_range(start='2023-03-01', periods=100)
-
-# Graficar
-plt.figure(figsize=(10, 5))
-plt.plot(datos['Fecha'], y, 'o', label='Datos Originales')
-plt.plot(fechas_taylor_interp, y_taylor, label='Interpolación de Taylor', color='orange')
-plt.title('Interpolación de Taylor de Temperaturas Diarias')
-plt.xlabel('Fecha')
-plt.ylabel('Temperatura (°C)')
-plt.legend()
-plt.grid()
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.show()
+              
+        plt.figure(figsize=(10, 6))
+        plt.scatter(x_valores, y_original, label='Datos Originales')
+        plt.plot(x_suave, y_suave, 'r-', linewidth=2, label='Interpolación suavizada')
+        plt.ylabel('Valores')
+        plt.xlabel('Dias')
+        plt.title('Interpolación de Taylor')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+ 
+datos = {
+    0: 21.9,
+    1: 21.6,
+    2: 21.9,
+    3: 22.0,
+    4: 22.3,
+    5: 21.8,
+    6: 20.9,
+    7: 21.1,
+    8: 21.6,
+    9: 21.2,
+    10: 21.7,
+    11: 22.2,
+    12: 22.3,
+    13: 21.7,
+    14: 22.3,
+    15: 22.8,
+    16: 24.0,
+    17: 22.8,
+    18: 22.8,
+    19: 22.8,
+    20: 24.4,
+    21: 24.8,
+    22: 23.7,
+    23: 23.7,
+    24: 23.4,
+    25: 22.7,
+    26: 22.7,
+    27: 22.9,
+    28: 23.1,
+    29: 23.6,
+    30: 22.4,
+    31: 21.9,
+}        
+    
+taylor = InterpolacionTaylor(datos=datos, punto_de_interpolacion=3, orden=3)
+taylor.graficar()
